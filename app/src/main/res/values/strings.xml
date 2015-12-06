@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">EasyFileTransfer</string>
+    <string name="selected_files">Selected Files</string>
+    <string name="instruction_transfer">Touch Receiver transfer</string>
+</resources>

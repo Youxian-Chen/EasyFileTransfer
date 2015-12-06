@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/transfer_button_main"
+        android:scaleType="fitCenter"
+        android:layout_gravity="center_horizontal"
+        android:background="#00FFFFFF"
+        android:layout_weight="1"
+        android:src="@drawable/transfer"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/transfer_text_main"
+        android:layout_gravity="center_horizontal"
+        android:layout_weight="1"
+        android:textSize="20dp"
+        android:text="Transfer"/>
+
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/receiver_button_main"
+        android:scaleType="fitCenter"
+        android:layout_gravity="center_horizontal"
+
+        android:background="#00FFFFFF"
+        android:layout_weight="1"
+        android:src="@drawable/receiver"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/receiver_text_main"
+        android:layout_gravity="center_horizontal"
+        android:layout_weight="1"
+        android:textSize="20dp"
+        android:text="Receiver"/>
+
+</LinearLayout>
