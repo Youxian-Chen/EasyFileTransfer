@@ -38,7 +38,7 @@
             android:layout_weight="1"
             android:scaleType="centerInside"
             android:background="#00FFFFFF"
-            android:id="@+id/yes_button_main"
+            android:id="@+id/ok_button_main"
             android:src="@drawable/yes"/>
     </LinearLayout>
 </RelativeLayout>
