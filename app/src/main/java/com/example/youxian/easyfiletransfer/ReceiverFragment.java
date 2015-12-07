@@ -61,6 +61,8 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
                 mNfcAdapter.disableReaderMode(getActivity());
             }
         }
+        setWifiApEnabled(mWifiConfig, false);
+        mWifiManager.setWifiEnabled(true);
     }
 
     @Nullable
