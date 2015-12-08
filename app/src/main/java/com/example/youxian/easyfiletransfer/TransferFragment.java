@@ -2,6 +2,13 @@ package com.example.youxian.easyfiletransfer;
 
 import android.app.Fragment;
 import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -38,10 +45,36 @@ public class TransferFragment extends Fragment {
     private ProgressDialog mProgressDialog;
     private TransferFilesTask mTransferFilesTask;
 
+    private IntentFilter mNetWorkIntent;
+    private NetWorkReceiver mNetWorkReceiver;
+
+    private String[] mConfigStrings;
+    private WifiConfiguration mWifiConfig;
+    private WifiManager mWifiManager;
+
+    private boolean hasTransfer = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mReadyToTransfer = false;
+        mWifiManager = (WifiManager) getActivity().getSystemService(Context.WIFI_SERVICE);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mNetWorkIntent = new IntentFilter();
+        mNetWorkIntent.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
+        mNetWorkIntent.addAction(HCEService.WIFI_CONFIG);
+        mNetWorkReceiver = new NetWorkReceiver();
+        getActivity().registerReceiver(mNetWorkReceiver, mNetWorkIntent);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        getActivity().unregisterReceiver(mNetWorkReceiver);
     }
 
     @Nullable
@@ -58,6 +91,56 @@ public class TransferFragment extends Fragment {
         mAdapter = new FilesAdapter(mSelectedFiles);
         mListView.setAdapter(mAdapter);
         mReadyToTransfer = true;
+
+    }
+
+    private void connectToWiFi() {
+        WifiManager wifiManager = (WifiManager)getActivity().getSystemService(Context.WIFI_SERVICE);
+        //disable others
+        for (WifiConfiguration wifiConfiguration: wifiManager.getConfiguredNetworks()) {
+            wifiManager.disableNetwork(wifiConfiguration.networkId);
+        }
+
+        mWifiConfig = new WifiConfiguration();
+        mWifiConfig.SSID = "\"" + mConfigStrings[0] + "\"";
+        mWifiConfig.preSharedKey = "\"" + mConfigStrings[1] + "\"";
+        mWifiConfig.priority = 100000;
+        int res = wifiManager.addNetwork(mWifiConfig);
+        Log.d("WifiPreference", "add Network returned " + res);
+        wifiManager.disconnect();
+        boolean isEnable = wifiManager.enableNetwork(res, true);
+        Log.d("WifiPreference", "enable Network returned " + isEnable);
+        wifiManager.reconnect();
+    }
+
+    private void resetState() {
+        if (mProgressDialog != null) {
+            mProgressDialog.dismiss();
+            mProgressDialog = null;
+        }
+        if (mTransferFilesTask != null) {
+            mTransferFilesTask.cancel(true);
+            mTransferFilesTask = null;
+        }
+    }
+
+    private void startTransfer() {
+        resetState();
+        mProgressDialog = new ProgressDialog(getActivity());
+        mProgressDialog.setCancelable(false);
+        mProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        mProgressDialog.setProgress(0);
+        mTransferFilesTask = new TransferFilesTask(mSelectedFiles, mConfigStrings[2], "7788");
+        mTransferFilesTask.execute("");
+        mProgressDialog.show();
+    }
+
+    private void transferFinish() {
+        for (WifiConfiguration config: mWifiManager.getConfiguredNetworks()) {
+            mWifiManager.enableNetwork(config.networkId, true);
+        }
+        resetState();
+        getActivity().getFragmentManager().popBackStackImmediate();
     }
 
     public boolean getReadyToTransfer() {
@@ -105,6 +188,41 @@ public class TransferFragment extends Fragment {
 
     private static class ViewHolder {
         TextView title;
+    }
+
+    private class NetWorkReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            Log.d(TAG, action);
+            if (WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(action)) {
+                NetworkInfo info = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
+                if(info != null && info.isConnected() && info.getExtraInfo().contains("EasyFileTransfer")) {
+                    //connection done
+                    if (hasTransfer) {
+
+                    } else {
+                        startTransfer();
+                        hasTransfer = true;
+                    }
+                } else if (info != null && info.isConnected() && !info.getExtraInfo().contains("EasyFileTransfer")) {
+                    if (hasTransfer) {
+                        transferFinish();
+                        hasTransfer = false;
+                    }
+                }
+            } else if (HCEService.WIFI_CONFIG.equals(action)) {
+                //get wifi config
+                mProgressDialog = new ProgressDialog(getActivity());
+                mProgressDialog.setMessage("connecting...");
+                mProgressDialog.setCancelable(false);
+                mProgressDialog.show();
+                mConfigStrings = intent.getStringExtra(HCEService.WIFI_CONFIG).split("@");
+                Log.d(TAG, mConfigStrings[2]);
+                connectToWiFi();
+            }
+        }
     }
 
     private class TransferFilesTask extends AsyncTask<String, Integer, Long> {

@@ -1,7 +1,10 @@
 package com.example.youxian.easyfiletransfer;
 
 import android.app.Fragment;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
@@ -9,29 +12,39 @@ import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 
 /**
  * Created by Youxian on 12/7/15.
  */
 public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallback{
+    public static final String Received_Files = "received_files";
     private static final String TAG = ReceiverFragment.class.getName();
     private static final byte[] CLA_INS_P1_P2 = { 0x00, (byte)0xA4, 0x04, 0x00 };
     private static final byte[] AID_ANDROID = { (byte)0xF0, 0x3, 0x04, 0x05, 0x06, 0x07, 0x08 };
     private NfcAdapter mNfcAdapter;
     private WifiManager mWifiManager;
     private WifiConfiguration mWifiConfig;
+    private ReceiveRecevier mReceiveRecevier;
+
+    private List<String> mReceivedFiles;
+    private FilesAdapter mAdapter;
+
     private ListView mListView;
     private TextView mStatus;
     private TextView mPath;
@@ -44,6 +57,10 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
     @Override
     public void onResume() {
         super.onResume();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(Received_Files);
+        mReceiveRecevier = new ReceiveRecevier();
+        getActivity().registerReceiver(mReceiveRecevier, intentFilter);
         mNfcAdapter = NfcAdapter.getDefaultAdapter(getActivity());
         mWifiManager = (WifiManager) getActivity().getSystemService(Context.WIFI_SERVICE);
         if (mNfcAdapter != null) {
@@ -56,6 +73,7 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
     @Override
     public void onDestroy() {
         super.onDestroy();
+        getActivity().unregisterReceiver(mReceiveRecevier);
         if (mNfcAdapter != null) {
             if (mNfcAdapter.isEnabled()) {
                 mNfcAdapter.disableReaderMode(getActivity());
@@ -78,6 +96,17 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         mStatus = (TextView) view.findViewById(R.id.status_text_receive);
         mPath = (TextView) view.findViewById(R.id.path_text_receive);
 
+    }
+
+    private void onReceivedFiles() {
+        if (mReceivedFiles != null) {
+            mStatus.setVisibility(View.INVISIBLE);
+            mPath.setText(Environment.getExternalStorageDirectory().getPath() + "/EasyFileTransfer");
+            mPath.setVisibility(View.VISIBLE);
+            mNfcAdapter.disableReaderMode(getActivity());
+            mAdapter = new FilesAdapter(mReceivedFiles);
+            mListView.setAdapter(mAdapter);
+        }
     }
 
     private void openWifiAp() {
@@ -150,6 +179,7 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
 
     @Override
     public void onTagDiscovered(Tag tag) {
+        String wifiConfig = mWifiConfig.SSID + "@" + mWifiConfig.preSharedKey + "@" + getApIpAddr();
         IsoDep isoDep = IsoDep.get(tag);
         try {
             isoDep.connect();
@@ -157,13 +187,71 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
             String resString = new String(response);
             Log.d(TAG, "select application response: " + resString);
             if (resString.equals("EasyFileTransfer")) {
-
+                isoDep.transceive(wifiConfig.getBytes());
                 mNfcAdapter.disableReaderMode(getActivity());
+                Intent serverIntent = new Intent(getActivity(), ServerService.class);
+                serverIntent.setAction(ServerService.ACTION_SERVER_START);
+                getActivity().startService(serverIntent);
             }
 
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+    }
+
+    private class FilesAdapter extends BaseAdapter {
+        private List<String> mFiles;
+
+        public FilesAdapter(List<String> files) {
+            mFiles = files;
+        }
+        @Override
+        public int getCount() {
+            return mFiles.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return mFiles.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            String file = mFiles.get(position);
+            if (convertView == null) {
+                convertView = View.inflate(parent.getContext(), R.layout.listrow_item, null);
+                ViewHolder viewHolder = new ViewHolder();
+                viewHolder.title = (TextView) convertView.findViewById(R.id.title_text_item);
+                convertView.setTag(viewHolder);
+            }
+
+            if (file != null) {
+                ViewHolder viewHolder = (ViewHolder) convertView.getTag();
+                viewHolder.title.setText(file);
+            }
+            return convertView;
+        }
+    }
+
+    private static class ViewHolder {
+        TextView title;
+    }
+
+    private class ReceiveRecevier extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (Received_Files.equals(action)) {
+                mReceivedFiles = intent.getStringArrayListExtra(ServerService.FILES_NAME);
+                onReceivedFiles();
+            }
+        }
     }
 }
