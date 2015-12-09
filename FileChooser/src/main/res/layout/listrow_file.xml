@@ -9,7 +9,7 @@
         android:text="Title"
         android:layout_marginTop="15dp"
         android:layout_marginLeft="15dp"
-        android:maxEms="13"
+        android:maxEms="10"
         android:singleLine="false"
         android:id="@+id/title_file_item"/>
     <CheckBox

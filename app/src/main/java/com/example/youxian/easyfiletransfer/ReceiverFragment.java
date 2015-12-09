@@ -1,6 +1,7 @@
 package com.example.youxian.easyfiletransfer;
 
 import android.app.Fragment;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -22,7 +23,6 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
@@ -36,18 +36,21 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
     public static final String Received_Files = "received_files";
     private static final String TAG = ReceiverFragment.class.getName();
     private static final byte[] CLA_INS_P1_P2 = { 0x00, (byte)0xA4, 0x04, 0x00 };
-    private static final byte[] AID_ANDROID = { (byte)0xF0, 0x3, 0x04, 0x05, 0x06, 0x07, 0x08 };
+    private static final byte[] AID_ANDROID = { (byte)0xF0, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
     private NfcAdapter mNfcAdapter;
     private WifiManager mWifiManager;
     private WifiConfiguration mWifiConfig;
-    private ReceiveRecevier mReceiveRecevier;
+    private ReceiveReceiver mReceiveReceiver;
 
     private List<String> mReceivedFiles;
     private FilesAdapter mAdapter;
+    private boolean serverOpened = false;
+    private boolean serverConnected = false;
 
     private ListView mListView;
     private TextView mStatus;
     private TextView mPath;
+    private ProgressDialog mProgressDialog;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -59,8 +62,9 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         super.onResume();
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(Received_Files);
-        mReceiveRecevier = new ReceiveRecevier();
-        getActivity().registerReceiver(mReceiveRecevier, intentFilter);
+        intentFilter.addAction(ServerService.SERVER_CONNECTED);
+        mReceiveReceiver = new ReceiveReceiver();
+        getActivity().registerReceiver(mReceiveReceiver, intentFilter);
         mNfcAdapter = NfcAdapter.getDefaultAdapter(getActivity());
         mWifiManager = (WifiManager) getActivity().getSystemService(Context.WIFI_SERVICE);
         if (mNfcAdapter != null) {
@@ -73,7 +77,7 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
     @Override
     public void onDestroy() {
         super.onDestroy();
-        getActivity().unregisterReceiver(mReceiveRecevier);
+        getActivity().unregisterReceiver(mReceiveReceiver);
         if (mNfcAdapter != null) {
             if (mNfcAdapter.isEnabled()) {
                 mNfcAdapter.disableReaderMode(getActivity());
@@ -81,6 +85,11 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         }
         setWifiApEnabled(mWifiConfig, false);
         mWifiManager.setWifiEnabled(true);
+        mWifiManager.reconnect();
+        if (!serverConnected) {
+            Intent stopIntent = new Intent(getActivity(), ServerService.class);
+            getActivity().stopService(stopIntent);
+        }
     }
 
     @Nullable
@@ -100,12 +109,19 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
 
     private void onReceivedFiles() {
         if (mReceivedFiles != null) {
+            setWifiApEnabled(mWifiConfig, false);
+            mWifiManager.reconnect();
             mStatus.setVisibility(View.INVISIBLE);
             mPath.setText(Environment.getExternalStorageDirectory().getPath() + "/EasyFileTransfer");
             mPath.setVisibility(View.VISIBLE);
             mNfcAdapter.disableReaderMode(getActivity());
             mAdapter = new FilesAdapter(mReceivedFiles);
             mListView.setAdapter(mAdapter);
+            if (mProgressDialog != null) {
+                mProgressDialog.dismiss();
+                mProgressDialog = null;
+                serverConnected = false;
+            }
         }
     }
 
@@ -141,8 +157,8 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         mWifiConfig = new WifiConfiguration();
         mWifiConfig.SSID = "EasyFileTransfer";
         mWifiConfig.preSharedKey = "love0925";
-        mWifiConfig.hiddenSSID = true;
-        mWifiConfig.status = WifiConfiguration.Status.ENABLED;
+        //mWifiConfig.hiddenSSID = false;
+        //mWifiConfig.status = WifiConfiguration.Status.ENABLED;
         mWifiConfig.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
         mWifiConfig.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
         mWifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
@@ -180,18 +196,22 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
     @Override
     public void onTagDiscovered(Tag tag) {
         String wifiConfig = mWifiConfig.SSID + "@" + mWifiConfig.preSharedKey + "@" + getApIpAddr();
+        Log.d(TAG, wifiConfig);
         IsoDep isoDep = IsoDep.get(tag);
         try {
             isoDep.connect();
             byte[] response = isoDep.transceive(createSelectAidApdu(AID_ANDROID));
             String resString = new String(response);
             Log.d(TAG, "select application response: " + resString);
-            if (resString.equals("EasyFileTransfer")) {
+            if (resString.contains("EasyFileTransfer")) {
                 isoDep.transceive(wifiConfig.getBytes());
-                mNfcAdapter.disableReaderMode(getActivity());
-                Intent serverIntent = new Intent(getActivity(), ServerService.class);
-                serverIntent.setAction(ServerService.ACTION_SERVER_START);
-                getActivity().startService(serverIntent);
+                if (!serverOpened) {
+                    Intent serverIntent = new Intent(getActivity(), ServerService.class);
+                    serverIntent.setAction(ServerService.ACTION_SERVER_START);
+                    getActivity().startService(serverIntent);
+                    serverOpened = true;
+                }
+
             }
 
         } catch (IOException e) {
@@ -243,7 +263,7 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         TextView title;
     }
 
-    private class ReceiveRecevier extends BroadcastReceiver {
+    private class ReceiveReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -251,6 +271,12 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
             if (Received_Files.equals(action)) {
                 mReceivedFiles = intent.getStringArrayListExtra(ServerService.FILES_NAME);
                 onReceivedFiles();
+            } else if (ServerService.SERVER_CONNECTED.equals(action)) {
+                serverConnected = true;
+                mProgressDialog = new ProgressDialog(getActivity());
+                mProgressDialog.setMessage("Receiving files...");
+                mProgressDialog.setCancelable(false);
+                mProgressDialog.show();
             }
         }
     }

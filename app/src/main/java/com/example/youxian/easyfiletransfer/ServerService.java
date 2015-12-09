@@ -31,6 +31,7 @@ public class ServerService extends IntentService {
     private static final String TAG = ServerService.class.getName();
     public static final  String ACTION_SERVER_START = "action_server_start";
     public static final String FILES_NAME = "files_name";
+    public static final String SERVER_CONNECTED = "server_connected";
     private List<String> mFileName = new ArrayList<>();
 
     public ServerService(String name) {
@@ -61,6 +62,10 @@ public class ServerService extends IntentService {
                 serverSocket.bind(new InetSocketAddress(7788));
                 Socket client = serverSocket.accept();
                 Log.d(TAG, "client accept");
+
+                Intent connectedIntent = new Intent();
+                connectedIntent.setAction(SERVER_CONNECTED);
+                sendBroadcast(connectedIntent);
 
                 BufferedInputStream bis = new BufferedInputStream(client.getInputStream());
                 DataInputStream dis = new DataInputStream(bis);

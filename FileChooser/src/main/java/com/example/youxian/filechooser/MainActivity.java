@@ -70,7 +70,6 @@ public class MainActivity extends Activity {
         mOkButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d(TAG, "select files: " + getSelectedFiles().size());
                 Intent selectedIntent = new Intent();
                 selectedIntent.setAction(Intent.ACTION_SEND_MULTIPLE);
                 selectedIntent.putExtra(SELECTED_FILES, (Serializable) mSelectFiles);
@@ -102,9 +101,6 @@ public class MainActivity extends Activity {
     private void showDirectory(File file) {
         mFiles.clear();
         Collections.addAll(mFiles, file.listFiles());
-        for (File f : mFiles) {
-            Log.d(TAG, "file: " + f.getName());
-        }
         mFileListAdapter.notifyDataSetChanged();
         currentFile = file;
         showPath(currentFile.getPath());
@@ -147,7 +143,6 @@ public class MainActivity extends Activity {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             final File file = mListFiles.get(position);
-            Log.d(TAG, "file: " + file.getName() + " is folder: " + file.isDirectory());
             if (!file.isDirectory()) {
                 convertView = mInflater.inflate(R.layout.listrow_file, null);
                 TextView titleFile = (TextView) convertView.findViewById(R.id.title_file_item);
@@ -171,7 +166,6 @@ public class MainActivity extends Activity {
                 convertView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Log.d(TAG, "onClick");
                         showDirectory(file);
                     }
                 });

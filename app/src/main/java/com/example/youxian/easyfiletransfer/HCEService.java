@@ -20,9 +20,12 @@ public class HCEService extends HostApduService {
         } else {
             String stringApdu = new String(commandApdu);
             if (stringApdu.contains("EasyFileTransfer@love0925")) {
+                Log.d(TAG, "send config broadcast");
                 Intent configIntent = new Intent();
+                configIntent.setAction(WIFI_CONFIG);
                 configIntent.putExtra(WIFI_CONFIG, stringApdu);
                 sendBroadcast(configIntent);
+                return "Got it".getBytes();
             }
         }
         return new byte[0];
