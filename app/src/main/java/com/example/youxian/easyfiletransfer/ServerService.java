@@ -58,8 +58,7 @@ public class ServerService extends IntentService {
                  */
                 Log.d(TAG, "server create");
                 ServerSocket serverSocket = new ServerSocket();
-                serverSocket.setReuseAddress(true);
-                serverSocket.bind(new InetSocketAddress(7788));
+                serverSocket.bind(new InetSocketAddress(5566));
                 Socket client = serverSocket.accept();
                 Log.d(TAG, "client accept");
 

@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.DhcpInfo;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
@@ -26,8 +27,10 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -113,6 +116,27 @@ public class TransferFragment extends Fragment {
         wifiManager.reconnect();
     }
 
+    private static byte[] convert2Bytes(int hostAddress) {
+        byte[] addressBytes = { (byte)(0xff & hostAddress),
+                (byte)(0xff & (hostAddress >> 8)),
+                (byte)(0xff & (hostAddress >> 16)),
+                (byte)(0xff & (hostAddress >> 24)) };
+        return addressBytes;
+    }
+
+    private String getApIpAddr() {
+        DhcpInfo dhcpInfo = mWifiManager.getDhcpInfo();
+        byte[] ipAddress = convert2Bytes(dhcpInfo.serverAddress);
+        try {
+            String apIpAddr = InetAddress.getByAddress(ipAddress).getHostAddress();
+            Log.d(TAG, "ip: " + apIpAddr);
+            return apIpAddr;
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     private void resetState() {
         if (mProgressDialog != null) {
             mProgressDialog.dismiss();
@@ -130,13 +154,18 @@ public class TransferFragment extends Fragment {
         mProgressDialog.setCancelable(false);
         mProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         mProgressDialog.setProgress(0);
-        mTransferFilesTask = new TransferFilesTask(mSelectedFiles, mConfigStrings[2], "7788");
+        mTransferFilesTask = new TransferFilesTask(mSelectedFiles, getApIpAddr(), "5566");
         mTransferFilesTask.execute("");
         mProgressDialog.show();
     }
 
     private void transferFinish() {
         for (WifiConfiguration config: mWifiManager.getConfiguredNetworks()) {
+            if (config.SSID.contains(mWifiConfig.SSID)) {
+                mWifiManager.removeNetwork(config.networkId);
+                Log.d(TAG, "remove: " + config.SSID);
+                continue;
+            }
             mWifiManager.enableNetwork(config.networkId, true);
         }
         resetState();
@@ -219,7 +248,6 @@ public class TransferFragment extends Fragment {
                 mProgressDialog.setCancelable(false);
                 mProgressDialog.show();
                 mConfigStrings = intent.getStringExtra(HCEService.WIFI_CONFIG).split("@");
-                Log.d(TAG, mConfigStrings[2]);
                 connectToWiFi();
             }
         }

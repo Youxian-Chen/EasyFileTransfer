@@ -128,29 +128,6 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
     private void openWifiAp() {
         setWifiConfig();
         setWifiApEnabled(mWifiConfig, true);
-        String ipAddress = getApIpAddr();
-        Log.d(TAG, "ip: " + ipAddress);
-
-    }
-
-    private static byte[] convert2Bytes(int hostAddress) {
-        byte[] addressBytes = { (byte)(0xff & hostAddress),
-                (byte)(0xff & (hostAddress >> 8)),
-                (byte)(0xff & (hostAddress >> 16)),
-                (byte)(0xff & (hostAddress >> 24)) };
-        return addressBytes;
-    }
-
-    private String getApIpAddr() {
-        DhcpInfo dhcpInfo = mWifiManager.getDhcpInfo();
-        byte[] ipAddress = convert2Bytes(dhcpInfo.serverAddress);
-        try {
-            String apIpAddr = InetAddress.getByAddress(ipAddress).getHostAddress();
-            return apIpAddr;
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     private void setWifiConfig() {
@@ -195,7 +172,7 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
 
     @Override
     public void onTagDiscovered(Tag tag) {
-        String wifiConfig = mWifiConfig.SSID + "@" + mWifiConfig.preSharedKey + "@" + getApIpAddr();
+        String wifiConfig = mWifiConfig.SSID + "@" + mWifiConfig.preSharedKey;
         Log.d(TAG, wifiConfig);
         IsoDep isoDep = IsoDep.get(tag);
         try {
