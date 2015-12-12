@@ -150,13 +150,18 @@ public class MainActivity extends Activity {
                 if (checkSelectedFiles(file))
                     checkBox.setChecked(true);
                 titleFile.setText(file.getName());
+                checkBox.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (!mSelectFiles.contains(file)) {
+                            mSelectFiles.add(file);
+                        } else mSelectFiles.remove(file);
+                    }
+                });
                 convertView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         checkBox.performClick();
-                        if (!mSelectFiles.contains(file)) {
-                            mSelectFiles.add(file);
-                        } else mSelectFiles.remove(file);
                     }
                 });
             } else {

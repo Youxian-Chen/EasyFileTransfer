@@ -14,6 +14,7 @@ import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -63,6 +64,7 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(Received_Files);
         intentFilter.addAction(ServerService.SERVER_CONNECTED);
+        intentFilter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         mReceiveReceiver = new ReceiveReceiver();
         getActivity().registerReceiver(mReceiveReceiver, intentFilter);
         mNfcAdapter = NfcAdapter.getDefaultAdapter(getActivity());
@@ -161,6 +163,18 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         }
     }
 
+    private void startHandler() {
+        try {
+            Thread.sleep(4000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Intent serverIntent = new Intent(getActivity(), ServerService.class);
+        serverIntent.setAction(ServerService.ACTION_SERVER_START);
+        getActivity().startService(serverIntent);
+        serverOpened = true;
+    }
+
     private byte[] createSelectAidApdu(byte[] aid) {
         byte[] result = new byte[6 + aid.length];
         System.arraycopy(CLA_INS_P1_P2, 0, result, 0, CLA_INS_P1_P2.length);
@@ -183,10 +197,7 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
             if (resString.contains("EasyFileTransfer")) {
                 isoDep.transceive(wifiConfig.getBytes());
                 if (!serverOpened) {
-                    Intent serverIntent = new Intent(getActivity(), ServerService.class);
-                    serverIntent.setAction(ServerService.ACTION_SERVER_START);
-                    getActivity().startService(serverIntent);
-                    serverOpened = true;
+                    startHandler();
                 }
 
             }
@@ -254,6 +265,10 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
                 mProgressDialog.setMessage("Receiving files...");
                 mProgressDialog.setCancelable(false);
                 mProgressDialog.show();
+            } else if (WifiManager.SUPPLICANT_CONNECTION_CHANGE_ACTION.equals(action)) {
+                if (intent.getBooleanExtra(WifiManager.EXTRA_SUPPLICANT_CONNECTED, false)) {
+                    Log.d(TAG, "be connected");
+                }
             }
         }
     }

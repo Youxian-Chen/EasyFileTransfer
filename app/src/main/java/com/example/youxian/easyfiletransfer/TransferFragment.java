@@ -44,7 +44,6 @@ public class TransferFragment extends Fragment {
     private List<File> mSelectedFiles;
     private FilesAdapter mAdapter;
 
-    private boolean mReadyToTransfer;
     private ProgressDialog mProgressDialog;
     private TransferFilesTask mTransferFilesTask;
 
@@ -60,7 +59,6 @@ public class TransferFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mReadyToTransfer = false;
         mWifiManager = (WifiManager) getActivity().getSystemService(Context.WIFI_SERVICE);
     }
 
@@ -93,12 +91,11 @@ public class TransferFragment extends Fragment {
         mListView = (ListView) view.findViewById(R.id.list_transfer);
         mAdapter = new FilesAdapter(mSelectedFiles);
         mListView.setAdapter(mAdapter);
-        mReadyToTransfer = true;
-
     }
 
     private void connectToWiFi() {
         WifiManager wifiManager = (WifiManager)getActivity().getSystemService(Context.WIFI_SERVICE);
+        wifiManager.disconnect();
         //disable others
         for (WifiConfiguration wifiConfiguration: wifiManager.getConfiguredNetworks()) {
             wifiManager.disableNetwork(wifiConfiguration.networkId);
@@ -170,10 +167,6 @@ public class TransferFragment extends Fragment {
         }
         resetState();
         getActivity().getFragmentManager().popBackStackImmediate();
-    }
-
-    public boolean getReadyToTransfer() {
-        return mReadyToTransfer;
     }
 
     private class FilesAdapter extends BaseAdapter {
