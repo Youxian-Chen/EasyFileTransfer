@@ -263,7 +263,8 @@ public class TransferFragment extends Fragment {
 
                     Log.d(TAG, "server create");
                     ServerSocket serverSocket = new ServerSocket();
-                    serverSocket.bind(new InetSocketAddress(12345));
+                    serverSocket.setReuseAddress(true);
+                    serverSocket.bind(new InetSocketAddress(8899));
                     Socket client = serverSocket.accept();
                     Log.d(TAG, "client accept");
 

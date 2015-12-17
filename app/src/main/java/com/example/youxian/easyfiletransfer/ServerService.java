@@ -33,8 +33,8 @@ public class ServerService extends IntentService {
     public static final  String ACTION_SERVER_START = "action_server_start";
     public static final String FILES_NAME = "files_name";
     public static final String SERVER_CONNECTED = "server_connected";
-    private static final int SOCKET_TIMEOUT = 30000;
-    private static final int PORT = 12345;
+    private static final int SOCKET_TIMEOUT = 8000;
+    private static final int PORT = 8899;
     private String mAddress;
     private List<String> mFileName = new ArrayList<>();
 
