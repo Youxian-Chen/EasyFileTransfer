@@ -29,6 +29,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -124,9 +125,12 @@ public class TransferFragment extends Fragment {
     private String getApIpAddr() {
         DhcpInfo dhcpInfo = mWifiManager.getDhcpInfo();
         byte[] ipAddress = convert2Bytes(dhcpInfo.serverAddress);
+        byte[] gateAddress = convert2Bytes(dhcpInfo.gateway);
         try {
             String apIpAddr = InetAddress.getByAddress(ipAddress).getHostAddress();
             Log.d(TAG, "ip: " + apIpAddr);
+            String gateAddr = InetAddress.getByAddress(gateAddress).getHostAddress();
+            Log.d(TAG, "gate: " + gateAddr);
             return apIpAddr;
         } catch (UnknownHostException e) {
             e.printStackTrace();
@@ -151,7 +155,7 @@ public class TransferFragment extends Fragment {
         mProgressDialog.setCancelable(false);
         mProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         mProgressDialog.setProgress(0);
-        mTransferFilesTask = new TransferFilesTask(mSelectedFiles, getApIpAddr(), "5566");
+        mTransferFilesTask = new TransferFilesTask(mSelectedFiles);
         mTransferFilesTask.execute("");
         mProgressDialog.show();
     }
@@ -247,37 +251,32 @@ public class TransferFragment extends Fragment {
     }
 
     private class TransferFilesTask extends AsyncTask<String, Integer, Long> {
-        private String mAddress;
-        private String mPort;
         private List<File> mFiles = new ArrayList<>();
-        private static final int SOCKET_TIMEOUT = 5000;
 
-        public TransferFilesTask(List<File> files, String address, String port){
+        public TransferFilesTask(List<File> files){
             mFiles = files;
-            mAddress = address;
-            mPort = port;
         }
         @Override
         protected Long doInBackground(String... params) {
             while (!isCancelled()) {
-                Socket socket = new Socket();
-
                 try {
-                    Log.d(TAG, "Opening client socket - ");
-                    socket.bind(null);
-                    Log.d(TAG, mAddress + " port: " + mPort);
-                    socket.connect((new InetSocketAddress(mAddress, Integer.parseInt(mPort))), SOCKET_TIMEOUT);
 
-                    Log.d(TAG, "Client socket - " + socket.isConnected());
+                    Log.d(TAG, "server create");
+                    ServerSocket serverSocket = new ServerSocket();
+                    serverSocket.bind(new InetSocketAddress(12345));
+                    Socket client = serverSocket.accept();
+                    Log.d(TAG, "client accept");
 
-                    BufferedOutputStream bos = new BufferedOutputStream(socket.getOutputStream());
+
+
+                    BufferedOutputStream bos = new BufferedOutputStream(client.getOutputStream());
                     DataOutputStream dos = new DataOutputStream(bos);
 
                     dos.writeInt(mFiles.size());
-                    Log.d(TAG, mFiles.size()+"");
+                    Log.d(TAG, mFiles.size() + "");
                     int added = 100 / mFiles.size();
                     int status = 100 % mFiles.size();
-                    for (File file : mFiles){
+                    for (File file : mFiles) {
                         //File file = new File(music.getPath());
                         Log.d(TAG, file.getPath());
                         long length = file.length();
@@ -287,7 +286,7 @@ public class TransferFragment extends Fragment {
                         FileInputStream fis = new FileInputStream(file);
                         BufferedInputStream bis = new BufferedInputStream(fis);
                         int theByte;
-                        for (long i = 0; i < length; i++){
+                        for (long i = 0; i < length; i++) {
                             theByte = bis.read();
                             bos.write(theByte);
                         }
@@ -301,18 +300,11 @@ public class TransferFragment extends Fragment {
                         Log.d(TAG, "Client: Data written");
                     }
                     dos.close();
+                    serverSocket.close();
+                } catch (UnknownHostException e1) {
+                    e1.printStackTrace();
                 } catch (IOException e) {
                     Log.e(TAG, e.getMessage());
-                } finally {
-                    if (socket != null) {
-                        if (socket.isConnected()) {
-                            try {
-                                socket.close();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
                 }
                 Log.d(TAG, "Client: stop service");
                 mProgressDialog.dismiss();

@@ -26,8 +26,6 @@ import android.widget.TextView;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.List;
 
 /**
@@ -124,6 +122,15 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
                 mProgressDialog = null;
                 serverConnected = false;
             }
+        } else {
+            Log.d(TAG, "transfer failed");
+            setWifiApEnabled(mWifiConfig, false);
+            mWifiManager.reconnect();
+            if (mProgressDialog != null) {
+                mProgressDialog.dismiss();
+                mProgressDialog = null;
+                serverConnected = false;
+            }
         }
     }
 
@@ -136,8 +143,8 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         mWifiConfig = new WifiConfiguration();
         mWifiConfig.SSID = "EasyFileTransfer";
         mWifiConfig.preSharedKey = "love0925";
-        //mWifiConfig.hiddenSSID = false;
-        //mWifiConfig.status = WifiConfiguration.Status.ENABLED;
+        mWifiConfig.hiddenSSID = false;
+        mWifiConfig.status = WifiConfiguration.Status.ENABLED;
         mWifiConfig.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
         mWifiConfig.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
         mWifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
@@ -199,13 +206,10 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
                 if (!serverOpened) {
                     startHandler();
                 }
-
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     private class FilesAdapter extends BaseAdapter {
