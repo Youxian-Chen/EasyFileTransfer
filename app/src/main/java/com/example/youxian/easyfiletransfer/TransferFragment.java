@@ -282,19 +282,24 @@ public class TransferFragment extends Fragment {
                         Log.d(TAG, file.getPath());
                         long length = file.length();
                         dos.writeLong(length);
+                        Log.d(TAG, "length: " + length);
                         String name = file.getName();
                         dos.writeUTF(name);
+                        Log.d(TAG, "name: " + name);
                         FileInputStream fis = new FileInputStream(file);
                         BufferedInputStream bis = new BufferedInputStream(fis);
                         int theByte;
+                        /*
                         for (long i = 0; i < length; i++) {
                             theByte = bis.read();
                             bos.write(theByte);
                         }
-                        /*
-                        while((theByte = bis.read()) != -1){
-                            bos.write(theByte);
-                        }*/
+                        */
+                        byte[] buffer = new byte[1024];
+                        while((theByte = bis.read(buffer)) > 0 ){
+                            bos.write(buffer, 0, theByte);
+                            bos.flush();
+                        }
                         bis.close();
                         status = status + added;
                         mProgressDialog.setProgress(status);

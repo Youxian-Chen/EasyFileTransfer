@@ -122,19 +122,29 @@ public class ServerService extends IntentService {
             File[] files = new File[filesCount];
             for (int i = 0; i < filesCount; i++){
                 long fileLength = dis.readLong();
+                Log.d(TAG, "length: " + fileLength);
                 String fileName = dis.readUTF();
-
+                Log.d(TAG, "name: " + fileName);
                 files[i] = new File(dirPath +"/"+ fileName);
 
                 FileOutputStream fos = new FileOutputStream(files[i]);
-                BufferedOutputStream bos = new BufferedOutputStream(fos);
-
+                //BufferedOutputStream bos = new BufferedOutputStream(fos);
+                /*
                 for(int j = 0; j < fileLength; j++){
                     bos.write(bis.read());
                 }
+                */
+                int theByte;
+                byte[] buffer = new byte[1024];
+                while (fileLength > 0 && (theByte = dis.read(buffer, 0, (int) Math.min(buffer.length, fileLength))) != -1) {
+                    fos.write(buffer,0,theByte);
+                    fileLength -= theByte;
+                }
+                fos.close();
                 Log.d(TAG, "get file: " + fileName);
                 mFileName.add(fileName);
-                bos.close();
+                //bos.close();
+
                 new MediaScannerWrapper(getApplicationContext(), dirPath + "/" + fileName, "music/*").scan();
             }
             dis.close();
