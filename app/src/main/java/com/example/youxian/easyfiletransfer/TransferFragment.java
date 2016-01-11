@@ -122,6 +122,7 @@ public class TransferFragment extends Fragment {
         return addressBytes;
     }
 
+    /*
     private String getApIpAddr() {
         DhcpInfo dhcpInfo = mWifiManager.getDhcpInfo();
         byte[] ipAddress = convert2Bytes(dhcpInfo.serverAddress);
@@ -137,6 +138,7 @@ public class TransferFragment extends Fragment {
         }
         return null;
     }
+    */
 
     private void resetState() {
         if (mProgressDialog != null) {

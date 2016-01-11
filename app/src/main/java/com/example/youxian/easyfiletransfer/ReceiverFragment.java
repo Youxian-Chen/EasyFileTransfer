@@ -260,6 +260,7 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            Log.d(TAG, action);
             if (Received_Files.equals(action)) {
                 mReceivedFiles = intent.getStringArrayListExtra(ServerService.FILES_NAME);
                 onReceivedFiles();
