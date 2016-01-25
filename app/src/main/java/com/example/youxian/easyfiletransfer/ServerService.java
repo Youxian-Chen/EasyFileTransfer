@@ -8,7 +8,6 @@ import android.net.Uri;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.File;
@@ -53,8 +52,6 @@ public class ServerService extends IntentService {
         if (ACTION_SERVER_START.equals(action)) {
             while (mAddress == null) {
                 BufferedReader br = null;
-
-
                 try {
                     br = new BufferedReader(new FileReader("/proc/net/arp"));
                     String line;
@@ -76,7 +73,8 @@ public class ServerService extends IntentService {
                     Log.e(this.getClass().toString(), e.toString());
                 } finally {
                     try {
-                        br.close();
+                        if (br != null)
+                            br.close();
                     } catch (IOException e) {
                         Log.e(this.getClass().toString(), e.getMessage());
                     }

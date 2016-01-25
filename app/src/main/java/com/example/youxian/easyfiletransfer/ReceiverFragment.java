@@ -108,11 +108,13 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
     }
 
     private void onReceivedFiles() {
+        setWifiApEnabled(mWifiConfig, false);
+        mWifiManager.setWifiEnabled(true);
+        mWifiManager.reconnect();
         if (mReceivedFiles != null) {
-            setWifiApEnabled(mWifiConfig, false);
-            mWifiManager.reconnect();
             mStatus.setVisibility(View.INVISIBLE);
-            mPath.setText(Environment.getExternalStorageDirectory().getPath() + "/EasyFileTransfer");
+            String path = Environment.getExternalStorageDirectory().getPath() + "/EasyFileTransfer";
+            mPath.setText(path);
             mPath.setVisibility(View.VISIBLE);
             mNfcAdapter.disableReaderMode(getActivity());
             mAdapter = new FilesAdapter(mReceivedFiles);
@@ -124,8 +126,6 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
             }
         } else {
             Log.d(TAG, "transfer failed");
-            setWifiApEnabled(mWifiConfig, false);
-            mWifiManager.reconnect();
             if (mProgressDialog != null) {
                 mProgressDialog.dismiss();
                 mProgressDialog = null;
@@ -264,16 +264,12 @@ public class ReceiverFragment extends Fragment implements NfcAdapter.ReaderCallb
             if (Received_Files.equals(action)) {
                 mReceivedFiles = intent.getStringArrayListExtra(ServerService.FILES_NAME);
                 onReceivedFiles();
-            } else if (ServerService.SERVER_CONNECTED.equals(action)) {
+            } else if (ServerService.SERVER_CONNECTED.equals(action) && !serverConnected) {
                 serverConnected = true;
                 mProgressDialog = new ProgressDialog(getActivity());
                 mProgressDialog.setMessage("Receiving files...");
                 mProgressDialog.setCancelable(false);
                 mProgressDialog.show();
-            } else if (WifiManager.SUPPLICANT_CONNECTION_CHANGE_ACTION.equals(action)) {
-                if (intent.getBooleanExtra(WifiManager.EXTRA_SUPPLICANT_CONNECTED, false)) {
-                    Log.d(TAG, "be connected");
-                }
             }
         }
     }
